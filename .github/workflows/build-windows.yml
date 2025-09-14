@@ -1,5 +1,5 @@
 ---
-name: Build gRPC & Protobuf C++ (Windows)
+name: build (Windows)
 
 on:
   workflow_dispatch:

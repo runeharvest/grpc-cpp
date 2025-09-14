@@ -1,5 +1,5 @@
 ---
-name: Build gRPC & Protobuf C++ (Ubuntu)
+name: build (Ubuntu)
 
 on:
   workflow_dispatch:
