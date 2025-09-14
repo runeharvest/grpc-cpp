@@ -1,0 +1,49 @@
+name: Build gRPC & Protobuf C++ (Ubuntu)
+
+on:
+  workflow_dispatch:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git autoconf libtool pkg-config
+
+      - name: Build Protobuf
+        run: |
+          git clone --branch v21.6 https://github.com/protocolbuffers/protobuf.git
+          cd protobuf
+          git submodule update --init --recursive
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(nproc)
+          make install DESTDIR=$GITHUB_WORKSPACE/protobuf-out
+
+      - name: Build gRPC
+        run: |
+          git clone --branch v1.75.0 https://github.com/grpc/grpc.git
+          cd grpc
+          git submodule update --init --recursive
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DgRPC_PROTOBUF_PROVIDER=package -DProtobuf_DIR=$GITHUB_WORKSPACE/protobuf-out/usr/local/lib/cmake/protobuf
+          make -j$(nproc)
+          make install DESTDIR=$GITHUB_WORKSPACE/grpc-out
+
+      - name: Package libraries
+        run: |
+          tar czvf grpc-protobuf-ubuntu.tar.gz -C $GITHUB_WORKSPACE/grpc-out . -C $GITHUB_WORKSPACE/protobuf-out .
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: grpc-protobuf-ubuntu.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
