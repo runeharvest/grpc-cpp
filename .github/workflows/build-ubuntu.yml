@@ -16,9 +16,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake git autoconf libtool pkg-config
+            sudo apt-get update
+            sudo apt-get install -y \
+              build-essential cmake git autoconf libtool pkg-config gcc-13 g++-13
 
       - name: Cache APT packages
         uses: actions/cache@v4
@@ -55,12 +55,15 @@ jobs:
       - name: Build Protobuf
         if: steps.cache-protobuf-build.outputs.cache-hit != 'true'
         run: |
-          cd protobuf
-          mkdir -p build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/protobuf-install
-          make -j$(nproc)
-          make install
+            cd protobuf
+            mkdir -p build && cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/protobuf-install \
+              -DCMAKE_C_COMPILER=gcc-13 \
+              -DCMAKE_CXX_COMPILER=g++-13 \
+              -DCMAKE_CXX_STANDARD=23
+            make -j$(nproc)
+            make install
 
       - name: Cache gRPC source
         id: cache-grpc-source
@@ -88,15 +91,18 @@ jobs:
       - name: Build gRPC
         if: steps.cache-grpc-build.outputs.cache-hit != 'true'
         run: |
-          cd grpc
-          mkdir -p build && cd build
-          export PROTOBUF_DIR=$GITHUB_WORKSPACE/protobuf-install
-          cmake .. -DCMAKE_BUILD_TYPE=Release \
-            -DgRPC_PROTOBUF_PROVIDER=package \
-            -DProtobuf_DIR=$PROTOBUF_DIR/lib/cmake/protobuf \
-            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/grpc-install
-          make -j$(nproc)
-          make install
+            cd grpc
+            mkdir -p build && cd build
+            export PROTOBUF_DIR=$GITHUB_WORKSPACE/protobuf-install
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DgRPC_PROTOBUF_PROVIDER=package \
+              -DProtobuf_DIR=$PROTOBUF_DIR/lib/cmake/protobuf \
+              -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/grpc-install \
+              -DCMAKE_C_COMPILER=gcc-13 \
+              -DCMAKE_CXX_COMPILER=g++-13 \
+              -DCMAKE_CXX_STANDARD=23
+            make -j$(nproc)
+            make install
 
       - name: Package libraries
         run: |
