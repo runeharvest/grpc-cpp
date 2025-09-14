@@ -1,0 +1,37 @@
+# escape=`
+# Dockerfile for Windows build (Visual Studio 2022, C++23, cached dependencies)
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+SHELL ["powershell", "-Command", "$ErrorActionPreference = 'Stop'; $ProgressPreference = 'SilentlyContinue';"]
+
+# Install Chocolatey and dependencies
+RUN --mount=type=cache,target=C:/ProgramData/chocolatey/lib \
+    Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1')); \
+    choco install -y cmake git
+
+# Clone and build Protobuf
+RUN git clone --branch v27.1 https://github.com/protocolbuffers/protobuf.git; \
+    cd protobuf; \
+    git submodule update --init --recursive; \
+    mkdir build; cd build; \
+    --mount=type=cache,target=. \
+    cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=C:/protobuf-install -DCMAKE_CXX_STANDARD=23; \
+    cmake --build . --config Release; \
+    cmake --install . --prefix C:/protobuf-install
+
+# Clone and build gRPC
+RUN git clone --branch v1.74.0 https://github.com/grpc/grpc.git; \
+    cd grpc; \
+    git submodule update --init --recursive; \
+    mkdir build; cd build; \
+    --mount=type=cache,target=. \
+    cmake .. -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DgRPC_PROTOBUF_PROVIDER=package -DProtobuf_DIR=C:/protobuf-install/lib/cmake/protobuf -DCMAKE_INSTALL_PREFIX=C:/grpc-install -DCMAKE_CXX_STANDARD=23; \
+    cmake --build . --config Release; \
+    cmake --install . --prefix C:/grpc-install
+
+# Package libraries
+RUN Compress-Archive -Path C:/grpc-install/*,C:/protobuf-install/* -DestinationPath C:/grpc-protobuf-windows.zip
+
+CMD ["powershell"]

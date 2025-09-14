@@ -11,119 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        - name: Build and extract artifact
+          run: |
+            make build-linux
 
-      - name: Install dependencies
-        run: |
-            sudo apt-get update
-            sudo apt-get install -y \
-              build-essential cmake git autoconf libtool pkg-config gcc-13 g++-13
+        - name: Upload release asset
+          uses: softprops/action-gh-release@v1
+          if: github.event_name == 'release'
+          with:
+            files: grpc-protobuf-ubuntu.tar.gz
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache APT packages
-        uses: actions/cache@v4
-        with:
-          path: /var/cache/apt/archives
-          key: ubuntu-apt-${{ runner.os }}
-          restore-keys: |
-            ubuntu-apt-${{ runner.os }}-
-
-      - name: Cache Protobuf source
-        id: cache-protobuf-source
-        uses: actions/cache@v4
-        with:
-          path: protobuf
-          key: protobuf-source-v27.1-${{ runner.os }}
-
-      - name: Clone Protobuf
-        if: steps.cache-protobuf-source.outputs.cache-hit != 'true'
-        run: |
-          git clone --branch v27.1 \
-            https://github.com/protocolbuffers/protobuf.git
-          cd protobuf
-          git submodule update --init --recursive
-
-      - name: Cache Protobuf build
-        id: cache-protobuf-build
-        uses: actions/cache@v4
-        with:
-          path: |
-            protobuf/build
-            protobuf-install
-          key: protobuf-build-v27.1-${{ runner.os }}-${{ hashFiles('protobuf/CMakeLists.txt', 'protobuf/cmake/**') }}
-
-      - name: Build Protobuf
-        if: steps.cache-protobuf-build.outputs.cache-hit != 'true'
-        run: |
-            cd protobuf
-            git submodule update --init --recursive
-            mkdir -p build && cd build
-            cmake .. -DCMAKE_BUILD_TYPE=Release \
-              -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/protobuf-install \
-              -DCMAKE_C_COMPILER=gcc-13 \
-              -DCMAKE_CXX_COMPILER=g++-13 \
-              -DCMAKE_CXX_STANDARD=23 \
-              -Dprotobuf_BUILD_SHARED_LIBS=ON \
-              -Dprotobuf_ABSL_PROVIDER=module
-            make -j$(nproc)
-            make install
-
-      - name: Cache gRPC source
-        id: cache-grpc-source
-        uses: actions/cache@v4
-        with:
-          path: grpc
-          key: grpc-source-v1.74.0-${{ runner.os }}
-
-      - name: Clone gRPC
-        if: steps.cache-grpc-source.outputs.cache-hit != 'true'
-        run: |
-          git clone --branch v1.74.0 https://github.com/grpc/grpc.git
-          cd grpc
-          git submodule update --init --recursive
-
-      - name: Cache gRPC build
-        id: cache-grpc-build
-        uses: actions/cache@v4
-        with:
-          path: |
-            grpc/build
-            grpc-install
-          key: grpc-build-v1.74.0-${{ runner.os }}-${{ hashFiles('grpc/CMakeLists.txt', 'grpc/cmake/**') }}-${{ hashFiles('protobuf-install/**') }}
-
-      - name: Build gRPC
-        if: steps.cache-grpc-build.outputs.cache-hit != 'true'
-        run: |
-            cd grpc
-            mkdir -p build && cd build
-            export PROTOBUF_DIR=$GITHUB_WORKSPACE/protobuf-install
-            cmake .. -DCMAKE_BUILD_TYPE=Release \
-              -DgRPC_PROTOBUF_PROVIDER=package \
-              -DProtobuf_DIR=$PROTOBUF_DIR/lib/cmake/protobuf \
-              -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/grpc-install \
-              -DCMAKE_C_COMPILER=gcc-13 \
-              -DCMAKE_CXX_COMPILER=g++-13 \
-              -DCMAKE_CXX_STANDARD=23
-            make -j$(nproc)
-            make install
-
-      - name: Package libraries
-        run: |
-          tar czvf grpc-protobuf-ubuntu-${{ github.ref_name }}.tar.gz \
-            -C $GITHUB_WORKSPACE/grpc-install . \
-            -C $GITHUB_WORKSPACE/protobuf-install .
-
-      - name: Upload release asset
-        uses: softprops/action-gh-release@v1
-        if: github.event_name == 'release'
-        with:
-          files: grpc-protobuf-ubuntu-${{ github.ref_name }}.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload artifact for workflow dispatch
-        uses: actions/upload-artifact@v4
-        if: github.event_name == 'workflow_dispatch'
-        with:
-          name: grpc-protobuf-ubuntu
-          path: grpc-protobuf-ubuntu-${{ github.ref_name }}.tar.gz
+        - name: Upload artifact for workflow dispatch
+          uses: actions/upload-artifact@v4
+          if: github.event_name == 'workflow_dispatch'
+          with:
+            name: grpc-protobuf-ubuntu
+            path: grpc-protobuf-ubuntu.tar.gz

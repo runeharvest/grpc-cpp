@@ -1,0 +1,56 @@
+# Dockerfile for macOS ARM64 build (C++23, cached dependencies)
+# Note: macOS Docker images are not natively supported on public registries. This is a template for local use with Docker Desktop on Apple Silicon.
+FROM arm64v8/ubuntu:24.04
+
+RUN apt-get update && \
+    apt-get install -y build-essential cmake git autoconf libtool pkg-config gcc-13 g++-13 curl
+
+# Clone and build utf8_range
+RUN git clone https://github.com/lemire/utf8_range.git && \
+    cd utf8_range && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/utf8_range_install && \
+    make -j$(nproc) && make install
+
+# Clone and build protobuf
+RUN git clone --branch v27.1 https://github.com/protocolbuffers/protobuf.git && \
+    cd protobuf && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX=/protobuf-install \
+      -DCMAKE_C_COMPILER=gcc-13 \
+      -DCMAKE_CXX_COMPILER=g++-13 \
+      -DCMAKE_CXX_STANDARD=23 \
+      -Dprotobuf_BUILD_SHARED_LIBS=ON \
+      -Dprotobuf_ABSL_PROVIDER=module \
+      -Dutf8_range_DIR=/utf8_range_install/lib/cmake/utf8_range \
+      -DABSL_RANDOM_RANDEN_HWAES_IMPL_ENABLE_SSE4_1=OFF \
+      -DABSL_ENABLE_SSE4_1=OFF \
+      -DABSL_ENABLE_SSE2=OFF \
+      -DCMAKE_CXX_FLAGS="" && \
+    make -j$(nproc) && make install
+
+# Clone and build gRPC
+RUN git clone --branch v1.74.0 https://github.com/grpc/grpc.git && \
+    cd grpc && \
+    git submodule update --init --recursive && \
+    mkdir build && cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release \
+      -DgRPC_PROTOBUF_PROVIDER=package \
+      -DProtobuf_DIR=/protobuf-install/lib/cmake/protobuf \
+      -DCMAKE_INSTALL_PREFIX=/grpc-install \
+      -DCMAKE_C_COMPILER=gcc-13 \
+      -DCMAKE_CXX_COMPILER=g++-13 \
+      -DCMAKE_CXX_STANDARD=23 \
+      -Dutf8_range_DIR=/utf8_range_install/lib/cmake/utf8_range \
+      -DABSL_RANDOM_RANDEN_HWAES_IMPL_ENABLE_SSE4_1=OFF \
+      -DABSL_ENABLE_SSE4_1=OFF \
+      -DABSL_ENABLE_SSE2=OFF \
+      -DCMAKE_CXX_FLAGS="" && \
+    make -j$(nproc) && make install
+
+# Package libraries
+RUN tar czvf /grpc-protobuf-macos-arm64.tar.gz -C /grpc-install . -C /protobuf-install .
+
+CMD ["/bin/bash"]
