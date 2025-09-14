@@ -20,32 +20,36 @@ jobs:
 
       - name: Build Protobuf
         run: |
-          git clone --branch v27.1 https://github.com/protocolbuffers/protobuf.git
-          cd protobuf
-          git submodule update --init --recursive
-          mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/protobuf-install \
-            -DCMAKE_CXX_STANDARD=23 \
-            -DABSL_RANDOM_RANDEN_HWAES_IMPL_ENABLE_SSE4_1=OFF
-          make -j$(sysctl -n hw.ncpu)
-          make install
+            git clone --branch v27.1 https://github.com/protocolbuffers/protobuf.git
+            cd protobuf
+            git submodule update --init --recursive
+            mkdir build && cd build
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/protobuf-install \
+              -DCMAKE_CXX_STANDARD=23 \
+              -DABSL_RANDOM_RANDEN_HWAES_IMPL_ENABLE_SSE4_1=OFF \
+              -DABSL_ENABLE_SSE4_1=OFF \
+              -DABSL_ENABLE_SSE2=OFF
+            make -j$(sysctl -n hw.ncpu)
+            make install
 
       - name: Build gRPC
         run: |
-          git clone --branch v1.74.0 https://github.com/grpc/grpc.git
-          cd grpc
-          git submodule update --init --recursive
-          mkdir -p build && cd build
-          export PROTOBUF_DIR=$GITHUB_WORKSPACE/protobuf-install
-          cmake .. -DCMAKE_BUILD_TYPE=Release \
-            -DgRPC_PROTOBUF_PROVIDER=package \
-            -DProtobuf_DIR=$PROTOBUF_DIR/lib/cmake/protobuf \
-            -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/grpc-install \
-            -DCMAKE_CXX_STANDARD=23 \
-            -DABSL_RANDOM_RANDEN_HWAES_IMPL_ENABLE_SSE4_1=OFF
-          make -j$(sysctl -n hw.ncpu)
-          make install
+            git clone --branch v1.74.0 https://github.com/grpc/grpc.git
+            cd grpc
+            git submodule update --init --recursive
+            mkdir -p build && cd build
+            export PROTOBUF_DIR=$GITHUB_WORKSPACE/protobuf-install
+            cmake .. -DCMAKE_BUILD_TYPE=Release \
+              -DgRPC_PROTOBUF_PROVIDER=package \
+              -DProtobuf_DIR=$PROTOBUF_DIR/lib/cmake/protobuf \
+              -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/grpc-install \
+              -DCMAKE_CXX_STANDARD=23 \
+              -DABSL_RANDOM_RANDEN_HWAES_IMPL_ENABLE_SSE4_1=OFF \
+              -DABSL_ENABLE_SSE4_1=OFF \
+              -DABSL_ENABLE_SSE2=OFF
+            make -j$(sysctl -n hw.ncpu)
+            make install
 
       - name: Package libraries
         run: |
