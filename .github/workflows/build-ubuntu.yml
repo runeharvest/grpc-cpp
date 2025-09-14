@@ -33,12 +33,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: protobuf
-          key: protobuf-source-v21.6-${{ runner.os }}
+          key: protobuf-source-v27.1-${{ runner.os }}
 
       - name: Clone Protobuf
         if: steps.cache-protobuf-source.outputs.cache-hit != 'true'
         run: |
-          git clone --branch v21.6 \
+          git clone --branch v27.1 \
             https://github.com/protocolbuffers/protobuf.git
           cd protobuf
           git submodule update --init --recursive
@@ -50,7 +50,7 @@ jobs:
           path: |
             protobuf/build
             protobuf-install
-          key: protobuf-build-v21.6-${{ runner.os }}-${{ hashFiles('protobuf/CMakeLists.txt', 'protobuf/cmake/**') }}
+          key: protobuf-build-v27.1-${{ runner.os }}-${{ hashFiles('protobuf/CMakeLists.txt', 'protobuf/cmake/**') }}
 
       - name: Build Protobuf
         if: steps.cache-protobuf-build.outputs.cache-hit != 'true'
@@ -67,12 +67,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: grpc
-          key: grpc-source-v1.75.0-${{ runner.os }}
+          key: grpc-source-v1.74.0-${{ runner.os }}
 
       - name: Clone gRPC
         if: steps.cache-grpc-source.outputs.cache-hit != 'true'
         run: |
-          git clone --branch v1.75.0 https://github.com/grpc/grpc.git
+          git clone --branch v1.74.0 https://github.com/grpc/grpc.git
           cd grpc
           git submodule update --init --recursive
 
@@ -83,7 +83,7 @@ jobs:
           path: |
             grpc/build
             grpc-install
-          key: grpc-build-v1.75.0-${{ runner.os }}-${{ hashFiles('grpc/CMakeLists.txt', 'grpc/cmake/**') }}-${{ hashFiles('protobuf-install/**') }}
+          key: grpc-build-v1.74.0-${{ runner.os }}-${{ hashFiles('grpc/CMakeLists.txt', 'grpc/cmake/**') }}-${{ hashFiles('protobuf-install/**') }}
 
       - name: Build gRPC
         if: steps.cache-grpc-build.outputs.cache-hit != 'true'
