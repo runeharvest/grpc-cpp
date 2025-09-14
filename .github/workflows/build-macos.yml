@@ -1,5 +1,5 @@
 ---
-name: Build gRPC & Protobuf C++ (Ubuntu)
+name: Build gRPC & Protobuf C++ (macOS)
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     timeout-minutes: 120
     steps:
       - name: Checkout repository
@@ -16,9 +16,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            build-essential cmake git autoconf libtool pkg-config
+          brew install cmake git autoconf automake libtool
 
       - name: Build Protobuf
         run: |
@@ -29,7 +27,7 @@ jobs:
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/protobuf-install
-          make -j$(nproc)
+          make -j$(sysctl -n hw.ncpu)
           make install
 
       - name: Build gRPC
@@ -43,12 +41,12 @@ jobs:
             -DgRPC_PROTOBUF_PROVIDER=package \
             -DProtobuf_DIR=$PROTOBUF_DIR/lib/cmake/protobuf \
             -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/grpc-install
-          make -j$(nproc)
+          make -j$(sysctl -n hw.ncpu)
           make install
 
       - name: Package libraries
         run: |
-          tar czvf grpc-protobuf-ubuntu-${{ github.ref_name }}.tar.gz \
+          tar czvf grpc-protobuf-macos-${{ github.ref_name }}.tar.gz \
             -C $GITHUB_WORKSPACE/grpc-install . \
             -C $GITHUB_WORKSPACE/protobuf-install .
 
@@ -56,7 +54,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: github.event_name == 'release'
         with:
-          files: grpc-protobuf-ubuntu-${{ github.ref_name }}.tar.gz
+          files: grpc-protobuf-macos-${{ github.ref_name }}.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -64,5 +62,5 @@ jobs:
         uses: actions/upload-artifact@v3
         if: github.event_name == 'workflow_dispatch'
         with:
-          name: grpc-protobuf-ubuntu
-          path: grpc-protobuf-ubuntu-${{ github.ref_name }}.tar.gz
+          name: grpc-protobuf-macos
+          path: grpc-protobuf-macos-${{ github.ref_name }}.tar.gz
